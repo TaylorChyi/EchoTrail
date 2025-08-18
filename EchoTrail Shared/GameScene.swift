@@ -21,13 +21,13 @@ final class GameScene: SKScene {
     let KINETIC_PERIOD = 5
     
     // 音频清单
-    struct AudioBank {
-        static let eatWhite = "sfx_eat_white.wav"
-        static let eatGold  = "sfx_eat_gold.wav"
-        static let echoSpawn = "sfx_echo_spawn.wav"
-        static let echoFuse  = "sfx_echo_fuse.wav"
-        static let bumpWall  = "sfx_bump_wall.wav"
-        static let gameOver  = "sfx_game_over.wav"
+    enum SFX: String {
+        case eatWhite = "sfx_eat_white.mp3"
+        case eatGold  = "sfx_eat_gold.mp3"
+        case echoSpawn = "sfx_echo_spawn.mp3"
+        case echoFuse  = "sfx_echo_fuse.mp3"
+        case bumpWall  = "sfx_bump_wall.mp3"
+        case gameOver  = "sfx_game_over.mp3"
     }
 
     // 状态
@@ -100,9 +100,10 @@ final class GameScene: SKScene {
         }
     }
 
-    func playSFXIfAvailable(_ filename: String) {
-        guard audioFileExists(filename) else { return }
-        run(.playSoundFileNamed(filename, waitForCompletion: false))
+    func playSFXIfAvailable(_ sfx: SFX) {
+        let file = sfx.rawValue
+        guard audioFileExists(file) else { return }
+        run(.playSoundFileNamed(file, waitForCompletion: false))
     }
 
     // 生命周期
@@ -215,7 +216,7 @@ final class GameScene: SKScene {
             return true
         } else {
             if isPlayer && dir != "W" && (t - lastBumpTick) > 5 {
-                playSFXIfAvailable(AudioBank.bumpWall)
+                playSFXIfAvailable(.bumpWall)
                 #if os(iOS)
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 #endif
@@ -229,7 +230,7 @@ final class GameScene: SKScene {
         if balls[p] == .white {
             balls[p] = .gold
             refreshBallNode(at: p)
-            playSFXIfAvailable(AudioBank.eatWhite)
+            playSFXIfAvailable(.eatWhite)
         }
     }
 
@@ -239,7 +240,7 @@ final class GameScene: SKScene {
         switch tball {
         case .white:
             score += 10
-            playSFXIfAvailable(AudioBank.eatWhite)
+            playSFXIfAvailable(.eatWhite)
             spawnParticle(at: p, color: .white)
             #if os(iOS)
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -248,7 +249,7 @@ final class GameScene: SKScene {
             score += Int(30 * multiplier.rounded(.towardZero))
             multiplier = min(multiplier + 0.5, 4.0)
             multExpire = t + 50
-            playSFXIfAvailable(AudioBank.eatGold)
+            playSFXIfAvailable(.eatGold)
             spawnParticle(at: p, color: SKColor(red: 0.98, green: 0.75, blue: 0.14, alpha: 1))
             #if os(iOS)
             UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -284,7 +285,7 @@ final class GameScene: SKScene {
                 }
             }
             score += 50; multiplier = min(multiplier + 0.5, 4.0); multExpire = t + 50
-            playSFXIfAvailable(AudioBank.echoFuse)
+            playSFXIfAvailable(.echoFuse)
             #if os(iOS)
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             #endif
@@ -309,7 +310,7 @@ final class GameScene: SKScene {
         world.addChild(e.node)
         echoes.append(e)
         epeak = max(epeak, echoes.count)
-        playSFXIfAvailable(AudioBank.echoSpawn)
+        playSFXIfAvailable(.echoSpawn)
         #if os(iOS)
         UIImpactFeedbackGenerator(style: .soft).impactOccurred()
         #endif
@@ -339,7 +340,7 @@ final class GameScene: SKScene {
 
     func gameOver(_ reason: String) {
         state = .over
-        playSFXIfAvailable(AudioBank.gameOver)
+        playSFXIfAvailable(.gameOver)
         GameAudio.shared.stopMusic()
         #if os(iOS)
         UINotificationFeedbackGenerator().notificationOccurred(.error)
