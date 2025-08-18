@@ -17,8 +17,10 @@
 			membershipExceptions = (
 				Actions.sks,
 				Assets.xcassets,
+				GameAudio.swift,
 				GameScene.sks,
 				GameScene.swift,
+				IntPoint.swift,
 			);
 			target = E1059B222E5384090024A1F7 /* EchoTrail iOS */;
 		};
@@ -27,8 +29,10 @@
 			membershipExceptions = (
 				Actions.sks,
 				Assets.xcassets,
+				GameAudio.swift,
 				GameScene.sks,
 				GameScene.swift,
+				IntPoint.swift,
 			);
 			target = E1059B332E5384090024A1F7 /* EchoTrail macOS */;
 		};

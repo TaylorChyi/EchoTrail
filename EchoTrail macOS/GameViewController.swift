@@ -7,24 +7,26 @@
 
 import Cocoa
 import SpriteKit
-import GameplayKit
 
 class GameViewController: NSViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        let scene = GameScene.newGameScene()
-        
-        // Present the scene
-        let skView = self.view as! SKView
-        skView.presentScene(scene)
-        
+
+        let skView = view as! SKView
+        skView.showsFPS = false
+        skView.showsNodeCount = false
         skView.ignoresSiblingOrder = true
-        
-        skView.showsFPS = true
-        skView.showsNodeCount = true
+
+        let scene = GameScene(size: skView.bounds.size)
+        scene.scaleMode = .resizeFill
+        skView.presentScene(scene)
+
+        view.window?.makeFirstResponder(skView) // 使键盘事件进入场景
     }
 
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        (view as? SKView)?.scene?.size = view.bounds.size
+    }
 }
-
