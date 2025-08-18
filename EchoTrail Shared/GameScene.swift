@@ -1,407 +1,57 @@
-//
-//  GameScene.swift
-//  EchoTrail Shared
-//
-//  Created by 齐天乐 on 2025/8/18.
-//
-
 import SpriteKit
 
-final class GameScene: SKScene {
-    // 网格与参数集中于 GameConfig
-    
-    // 状态
-    enum State { case idle, playing, paused, over }
-    var state: State = .idle
-    var tickRate: Double = GameConfig.tickBase
-    var tickInterval: Double { 1.0 / tickRate }
-    var t: Int = 0
-    var timeSec: Double = 0
-
-    var score = 0
-    var multiplier: Double = 1.0
-    var multExpire: Int = -1
-    var epeak = 0
-
-    var nextEchoSpawn = GameConfig.echoDelay
-    var lastBallSpawn = 0
-    var lastSpeedUp = 0
-
-    var posHistory: [IntPoint] = []
-    var continuousDir: String? = nil
-    var waitingHold = false
-
-    // 实体系统
-    let entitySystem = EntitySystem()
-    var player: PlayerEntity!
-    var echoes: [EchoEntity] = []
-    enum Ball { case white, gold }
-    var balls: [IntPoint: Ball] = [:]
-
-    /// All obstacles currently present in the world.
-    var obstacles: [ObstacleEntity] = []
-
-    // 渲染容器与 UI（User Interface（用户界面））
-    let world = SKNode()
-    let hud = SKNode()
-    var hudManager: HUDManager!
+final class GameScene: SKScene, GameCoreDelegate {
+    private let worldNode = SKNode()
+    private let hudNode = SKNode()
+    private var hudManager: HUDManager!
     private let gameOverOverlay = GameOverOverlay()
-    var inputController: InputControllerProtocol!
+    private var inputController: InputControllerProtocol!
+    private let core = GameCore()
 
-    // 虚拟摇杆（iOS 使用）
-
-    // 驱动
-    var lastUpdate: TimeInterval = 0
-    var acc: Double = 0
-    var lastBumpTick = -999
-
-    // 便捷
-    func clamp<T: Comparable>(_ v: T, _ a: T, _ b: T) -> T { min(max(v, a), b) }
-    func cellSize() -> CGSize { CGSize(width: size.width/Double(GameConfig.gridWidth+2), height: size.height/Double(GameConfig.gridHeight+2)) }
-    func pointFor(_ p: IntPoint) -> CGPoint {
-        let cs = cellSize()
-        return CGPoint(x: (Double(p.x)+1.5)*cs.width, y: (Double(p.y)+1.5)*cs.height)
-    }
-    func newRect(_ size: CGSize, color: SKColor) -> SKShapeNode {
-        let n = SKShapeNode(rectOf: size, cornerRadius: 10)
-        n.fillColor = color; n.strokeColor = color.withAlphaComponent(0.9)
-        return n
-    }
-
-    // 生命周期
     override func didMove(to view: SKView) {
         backgroundColor = Theme.background
-        addChild(world)
-        addChild(hud)
+        addChild(worldNode)
+        addChild(hudNode)
         hudManager = HUDManager(sceneSize: size)
-        hud.addChild(hudManager)
+        hudNode.addChild(hudManager)
+        core.delegate = self
+        core.configure()
         #if os(iOS)
         inputController = TouchInputController()
         #elseif os(macOS)
         inputController = KeyboardInputController()
         #endif
-        inputController.delegate = self
+        inputController.delegate = core
         inputController.configure(scene: self)
-        buildMap()
-        enterIdle()
     }
 
-    // 地图与实体
-    func buildMap() {
-        gameOverOverlay.hide()
-        world.removeAllChildren()
-        entitySystem.removeAll()
-        echoes.removeAll()
-        obstacles.removeAll()
-        balls.removeAll()
+    override func update(_ currentTime: TimeInterval) {
+        core.update(currentTime: currentTime)
+    }
 
-        score = 0; multiplier = 1; multExpire = -1; epeak = 0
-        t = 0; timeSec = 0; tickRate = GameConfig.tickBase
-        nextEchoSpawn = GameConfig.echoDelay; lastBallSpawn = 0; lastSpeedUp = 0
-        posHistory.removeAll()
+    // MARK: - GameCoreDelegate
+    var world: SKNode { worldNode }
 
+    func cellSize() -> CGSize {
+        CGSize(width: size.width/Double(GameConfig.gridWidth+2),
+               height: size.height/Double(GameConfig.gridHeight+2))
+    }
+
+    func pointFor(_ p: IntPoint) -> CGPoint {
         let cs = cellSize()
-        let playerNode = newRect(CGSize(width: cs.width*0.8, height: cs.height*0.8),
-                                 color: Theme.player)
-        player = PlayerEntity(position: IntPoint(x: GameConfig.gridWidth/2, y: GameConfig.gridHeight-1),
-                              node: playerNode)
-        player.node.position = pointFor(player.position)
-        entitySystem.add(player, to: world)
-
-        // 固定障碍
-        let count = 8 + Int.random(in: 0...5)
-        var attempts = 0
-        while obstacles.count < count && attempts < 200 {
-            attempts += 1
-            let x = Int.random(in: 0..<GameConfig.gridWidth)
-            let y = Int.random(in: 0..<(GameConfig.gridHeight-3))
-            if x == GameConfig.gridWidth/2 && y == GameConfig.gridHeight-1 { continue }
-            let p = IntPoint(x: x, y: y)
-            if y > 0 && y < GameConfig.gridHeight-1 {
-                if obstacles.contains(where: { $0.position == IntPoint(x:x, y:y-1) }) &&
-                   obstacles.contains(where: { $0.position == IntPoint(x:x, y:y+1) }) { continue }
-            }
-            let n = newRect(CGSize(width: cs.width*0.9, height: cs.height*0.9),
-                            color: Theme.obstacle)
-            n.position = pointFor(p)
-            let ob = ObstacleEntity(position: p, node: n, pointFor: pointFor)
-            obstacles.append(ob)
-            entitySystem.add(ob, to: world)
-        }
-
-        // 初始球
-        for _ in 0..<3 { addBallRandom(false) }
-        updateHUD()
+        return CGPoint(x: (Double(p.x)+1.5)*cs.width,
+                       y: (Double(p.y)+1.5)*cs.height)
     }
 
-    func addBallRandom(_ gold: Bool) {
-        for _ in 0..<50 {
-            let x = Int.random(in: 0..<GameConfig.gridWidth)
-            let y = Int.random(in: 0..<GameConfig.gridHeight)
-            let p = IntPoint(x:x, y:y)
-            if balls[p] == nil && passable(p) && !(p == player.position) {
-                balls[p] = gold ? .gold : .white
-                drawBall(p)
-                break
-            }
-        }
+    func updateHUD(score: Int, multiplier: Double, time: Double, echoPeak: Int) {
+        hudManager.update(score: score, multiplier: multiplier, time: time, echoPeak: echoPeak)
     }
 
-    func drawBall(_ p: IntPoint) {
-        let cs = cellSize()
-        let r = min(cs.width, cs.height) * 0.18
-        let n = SKShapeNode(circleOfRadius: r)
-        n.fillColor = .white; n.strokeColor = .white.withAlphaComponent(0.8)
-        n.name = "ball_\(p.x)_\(p.y)"
-        n.position = pointFor(p)
-        world.addChild(n)
-    }
-
-    func refreshBallNode(at p: IntPoint) {
-        if let node = world.childNode(withName: "ball_\(p.x)_\(p.y)") as? SKShapeNode {
-            switch balls[p] ?? .white {
-            case .white: node.fillColor = .white
-            case .gold: node.fillColor = Theme.goldBall
-            }
-        }
-    }
-
-    func passable(_ p: IntPoint) -> Bool {
-        guard p.x >= 0, p.y >= 0, p.x < GameConfig.gridWidth, p.y < GameConfig.gridHeight else { return false }
-        return !obstacles.contains { $0.position == p }
-    }
-
-    func upgradeBall(at p: IntPoint) {
-        if balls[p] == .white {
-            balls[p] = .gold
-            refreshBallNode(at: p)
-            GameAudio.shared.play(.eatWhite, on: self)
-        }
-    }
-
-    func collectBall(at p: IntPoint) {
-        guard let tball = balls.removeValue(forKey: p) else { return }
-        if let node = world.childNode(withName: "ball_\(p.x)_\(p.y)") { node.removeFromParent() }
-        switch tball {
-        case .white:
-            score += 10
-            GameAudio.shared.play(.eatWhite, on: self)
-            spawnParticle(at: p, color: .white)
-            #if os(iOS)
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            #endif
-        case .gold:
-            score += Int(30 * multiplier.rounded(.towardZero))
-            multiplier = min(multiplier + 0.5, 4.0)
-            multExpire = t + 50
-            GameAudio.shared.play(.eatGold, on: self)
-            spawnParticle(at: p, color: Theme.goldBall)
-            #if os(iOS)
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
-            #endif
-        }
-    }
-
-    func spawnParticle(at p: IntPoint, color: SKColor) {
-        let cs = cellSize()
-        let pt = pointFor(p)
-        for _ in 0..<10 {
-            let r = SKShapeNode(rectOf: CGSize(width: 4, height: 4), cornerRadius: 1)
-            r.fillColor = color; r.strokeColor = color; r.position = pt; r.zPosition = 10
-            world.addChild(r)
-            let dx = CGFloat.random(in: -cs.width*0.1...cs.width*0.1)
-            let dy = CGFloat.random(in: -cs.height*0.1...cs.height*0.1)
-            r.run(.sequence([.group([.moveBy(x: dx, y: dy, duration: 0.4), .fadeOut(withDuration: 0.4)]), .removeFromParent()]))
-        }
-    }
-
-    func collidePlayerEcho() -> Bool { echoes.contains(where: { $0.position == player.position }) }
-
-    func handleEchoFusion() {
-        var map: [IntPoint:[Int]] = [:]
-        for (i, e) in echoes.enumerated() { map[e.position, default: []].append(i) }
-        var removeIdx = Set<Int>()
-        for (pos, arr) in map where arr.count >= 2 {
-            for (bp, tball) in balls {
-                if abs(bp.x - pos.x) + abs(bp.y - pos.y) <= 2, tball == .white {
-                    balls[bp] = .gold
-                    refreshBallNode(at: bp)
-                    spawnParticle(at: bp, color: Theme.goldBall)
-                }
-            }
-            score += 50; multiplier = min(multiplier + 0.5, 4.0); multExpire = t + 50
-            GameAudio.shared.play(.echoFuse, on: self)
-            #if os(iOS)
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
-            #endif
-            for i in arr { removeIdx.insert(i) }
-        }
-        if !removeIdx.isEmpty {
-            echoes = echoes.enumerated().filter { !removeIdx.contains($0.offset) }.map { $0.element }
-        }
-    }
-
-    func spawnEcho() {
-        guard posHistory.count >= GameConfig.echoDelay, echoes.count < GameConfig.echoLimit else { return }
-        let path = Array(posHistory.suffix(GameConfig.echoDelay))
-        let start = path.first!
-        let cs = cellSize()
-        let node = newRect(CGSize(width: cs.width*0.8, height: cs.height*0.8),
-                           color: Theme.echo)
-        node.position = pointFor(start)
-        node.alpha = 0.85; node.zPosition = 2
-        node.userData = ["path": path, "cursor": 0]
-        let e = EchoEntity(position: start, delayIndex: 0, node: node)
-        entitySystem.add(e, to: world)
-        echoes.append(e)
-        epeak = max(epeak, echoes.count)
-        GameAudio.shared.play(.echoSpawn, on: self)
-        #if os(iOS)
-        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-        #endif
-    }
-
-    func maybeAddKineticObstacle() {
-        let kineticCount = obstacles.filter { !$0.path.isEmpty }.count
-        guard kineticCount < 4 else { return }
-        let y = Int.random(in: 0..<(GameConfig.gridHeight-3))
-        let len = clamp(3 + Int.random(in: 0...3), 3, GameConfig.gridWidth-2)
-        let x0 = clamp(1 + Int.random(in: 0..<(GameConfig.gridWidth-len-1)), 1, GameConfig.gridWidth-len-1)
-        var path: [IntPoint] = []
-        for x in x0..<(x0+len) { path.append(IntPoint(x:x, y:y)) }
-        for x in stride(from: x0+len-2, to: x0, by: -1) { path.append(IntPoint(x:x, y:y)) }
-        if path.contains(IntPoint(x: GameConfig.gridWidth/2, y: GameConfig.gridHeight-1)) { return }
-        let node = newRect(CGSize(width: cellSize().width*0.9, height: cellSize().height*0.9),
-                           color: Theme.kineticObstacle)
-        node.position = pointFor(path.first!)
-        let ob = ObstacleEntity(position: path.first!,
-                                path: path,
-                                node: node,
-                                pointFor: pointFor,
-                                moveDuration: tickInterval * Double(GameConfig.kineticPeriod),
-                                period: GameConfig.kineticPeriod)
-        obstacles.append(ob)
-        entitySystem.add(ob, to: world)
-    }
-
-    func collideObstacles(_ p: IntPoint) -> Bool {
-        obstacles.contains { $0.position == p }
-    }
-
-    func gameOver(_ reason: String) {
-        state = .over
-        GameAudio.shared.play(.gameOver, on: self)
-        GameAudio.shared.stopMusic()
-        #if os(iOS)
-        UINotificationFeedbackGenerator().notificationOccurred(.error)
-        #endif
-        let message = "游戏结束：\(reason)\n分数 \(score)  生存 \(String(format: "%.1f", timeSec)) 秒\n峰值回声 \(epeak)"
+    func showGameOver(message: String) {
         gameOverOverlay.show(message: message, in: self)
     }
 
-    // 主更新
-    override func update(_ currentTime: TimeInterval) {
-        if lastUpdate == 0 { lastUpdate = currentTime }
-        acc += currentTime - lastUpdate
-        lastUpdate = currentTime
-        while acc >= tickInterval && state == .playing {
-            tick()
-            acc -= tickInterval
-        }
-    }
-
-    func tick() {
-        let cmd = waitingHold ? "W" : (continuousDir ?? "W")
-        let dmap: [String:(Int,Int)] = ["U":(0,1),"D":(0,-1),"L":(-1,0),"R":(1,0),"W":(0,0)]
-        let move = dmap[cmd] ?? (0,0)
-        let moved = player.tryMove(direction: move,
-                                   passable: passable(_:),
-                                   pointFor: pointFor(_:),
-                                   interval: tickInterval)
-        if !moved && cmd != "W" && (t - lastBumpTick) > 5 {
-            GameAudio.shared.play(.bumpWall, on: self)
-            #if os(iOS)
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            #endif
-            lastBumpTick = t
-        }
-        posHistory.append(player.position)
-        if posHistory.count > (GameConfig.echoDelay*GameConfig.echoLimit + 60) { _ = posHistory.removeFirst() }
-
-        if t == nextEchoSpawn { spawnEcho(); nextEchoSpawn += GameConfig.echoDelay }
-
-        // 回声逐 Tick（时钟刻）沿记录路径行进
-        for i in (0..<echoes.count).reversed() {
-            var e = echoes[i]
-            guard var ud = e.node.userData else { continue }
-            var path = ud["path"] as! [IntPoint]
-            var cursor = ud["cursor"] as! Int
-            e.previousPosition = e.position
-            let p = cursor < path.count ? path[cursor] : path.last!
-            e.position = p
-            e.node.run(.move(to: pointFor(e.position), duration: tickInterval*0.9))
-            upgradeBall(at: e.position)
-            cursor += 1
-            ud["cursor"] = cursor
-            e.node.userData = ud
-            echoes[i] = e
-            if cursor >= path.count { e.node.removeFromParent(); echoes.remove(at: i) }
-        }
-
-        // 回声合鸣
-        handleEchoFusion()
-
-        // 更新实体系统（如动态障碍）
-        entitySystem.update(deltaTime: tickInterval)
-
-        // 碰撞
-        if collideObstacles(player.position) { gameOver("撞到障碍"); return }
-        for e in echoes { if collideObstacles(e.position) { gameOver("回声撞到障碍"); return } }
-        if collidePlayerEcho() { gameOver("与回声相撞"); return }
-
-        // 拾取
-        collectBall(at: player.position)
-        if multExpire >= 0 && t >= multExpire { multiplier = 1.0; multExpire = -1 }
-
-        // 补球
-        if t - lastBallSpawn >= GameConfig.ballInterval {
-            lastBallSpawn = t
-            if balls.count < GameConfig.ballCap { addBallRandom(false) }
-        }
-
-        // 难度提升
-        if t - lastSpeedUp >= GameConfig.speedStep {
-            lastSpeedUp = t
-            tickRate = min(20, tickRate * 1.08)
-            maybeAddKineticObstacle()
-        }
-
-        t += 1
-        timeSec = Double(t) / GameConfig.tickBase
-        updateHUD()
-    }
-
-    func updateHUD() {
-        hudManager.update(score: score, multiplier: multiplier, time: timeSec, echoPeak: epeak)
-    }
-
-    // 状态切换
-    func enterIdle() { state = .idle; GameAudio.shared.stopMusic(); GameAudio.shared.playMenu() }
-    func enterPlaying() { state = .playing; GameAudio.shared.stopMusic(); GameAudio.shared.playGame() }
-
-
-}
-
-extension GameScene: InputControllerDelegate {
-    func directionChanged(to direction: String?) {
-        continuousDir = direction
-    }
-
-    func holdChanged(isHolding: Bool) {
-        waitingHold = isHolding
-    }
-
-    func startRequested() {
-        if state == .idle || state == .over { buildMap(); enterPlaying() }
+    func hideGameOver() {
+        gameOverOverlay.hide()
     }
 }
