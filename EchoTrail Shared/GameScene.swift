@@ -9,20 +9,10 @@ import SpriteKit
 
 final class GameScene: SKScene {
 
-    // 网格与参数
-    let GRID_W = 7, GRID_H = 13
-    let TICK_BASE: Double = 10
-    let ECHO_DELAY = 30
-    let ECHO_LIMIT = 8
-    let BALL_INTERVAL = 40
-    let BALL_CAP = 7
-    let SPEED_STEP = 100
-    let KINETIC_PERIOD = 5
-    
     // 状态
     enum State { case idle, playing, paused, over }
     var state: State = .idle
-    var tickRate: Double = 10
+    var tickRate: Double = GameConfig.tickBase
     var tickInterval: Double { 1.0 / tickRate }
     var t: Int = 0
     var timeSec: Double = 0
@@ -32,7 +22,7 @@ final class GameScene: SKScene {
     var multExpire: Int = -1
     var epeak = 0
 
-    var nextEchoSpawn = 30
+    var nextEchoSpawn = GameConfig.echoDelay
     var lastBallSpawn = 0
     var lastSpeedUp = 0
 
@@ -68,7 +58,7 @@ final class GameScene: SKScene {
 
     // 便捷
     func clamp<T: Comparable>(_ v: T, _ a: T, _ b: T) -> T { min(max(v, a), b) }
-    func cellSize() -> CGSize { CGSize(width: size.width/Double(GRID_W+2), height: size.height/Double(GRID_H+2)) }
+    func cellSize() -> CGSize { CGSize(width: size.width/Double(GameConfig.gridWidth+2), height: size.height/Double(GameConfig.gridHeight+2)) }
     func pointFor(_ p: IntPoint) -> CGPoint {
         let cs = cellSize()
         return CGPoint(x: (Double(p.x)+1.5)*cs.width, y: (Double(p.y)+1.5)*cs.height)
@@ -81,7 +71,7 @@ final class GameScene: SKScene {
 
     // 生命周期
     override func didMove(to view: SKView) {
-        backgroundColor = SKColor(red: 0.04, green: 0.06, blue: 0.08, alpha: 1)
+        backgroundColor = Theme.background
         addChild(world)
         addChild(hud)
         hudManager = HUDManager(sceneSize: size)
@@ -101,13 +91,13 @@ final class GameScene: SKScene {
         balls.removeAll()
 
         score = 0; multiplier = 1; multExpire = -1; epeak = 0
-        t = 0; timeSec = 0; tickRate = TICK_BASE
-        nextEchoSpawn = ECHO_DELAY; lastBallSpawn = 0; lastSpeedUp = 0
+        t = 0; timeSec = 0; tickRate = GameConfig.tickBase
+        nextEchoSpawn = GameConfig.echoDelay; lastBallSpawn = 0; lastSpeedUp = 0
         posHistory.removeAll()
 
         let cs = cellSize()
-        player = Entity(pos: IntPoint(x: GRID_W/2, y: GRID_H-1),
-                        prev: IntPoint(x: GRID_W/2, y: GRID_H-1),
+        player = Entity(pos: IntPoint(x: GameConfig.gridWidth/2, y: GameConfig.gridHeight-1),
+                        prev: IntPoint(x: GameConfig.gridWidth/2, y: GameConfig.gridHeight-1),
                         tail: [],
                         node: newRect(CGSize(width: cs.width*0.8, height: cs.height*0.8),
                                       color: SKColor(red: 0.13, green: 0.83, blue: 0.93, alpha: 1)))
@@ -119,16 +109,16 @@ final class GameScene: SKScene {
         var attempts = 0
         while obstStatic.count < count && attempts < 200 {
             attempts += 1
-            let x = Int.random(in: 0..<GRID_W)
-            let y = Int.random(in: 0..<(GRID_H-3))
-            if x == GRID_W/2 && y == GRID_H-1 { continue }
+            let x = Int.random(in: 0..<GameConfig.gridWidth)
+            let y = Int.random(in: 0..<(GameConfig.gridHeight-3))
+            if x == GameConfig.gridWidth/2 && y == GameConfig.gridHeight-1 { continue }
             let p = IntPoint(x: x, y: y)
-            if y > 0 && y < GRID_H-1 {
+            if y > 0 && y < GameConfig.gridHeight-1 {
                 if obstStatic.contains(IntPoint(x:x, y:y-1)) && obstStatic.contains(IntPoint(x:x, y:y+1)) { continue }
             }
             obstStatic.insert(p)
             let n = newRect(CGSize(width: cs.width*0.9, height: cs.height*0.9),
-                            color: SKColor(red: 0.06, green: 0.09, blue: 0.16, alpha: 1))
+                            color: Theme.obstacle)
             n.position = pointFor(p)
             world.addChild(n)
         }
@@ -140,8 +130,8 @@ final class GameScene: SKScene {
 
     func addBallRandom(_ gold: Bool) {
         for _ in 0..<50 {
-            let x = Int.random(in: 0..<GRID_W)
-            let y = Int.random(in: 0..<GRID_H)
+            let x = Int.random(in: 0..<GameConfig.gridWidth)
+            let y = Int.random(in: 0..<GameConfig.gridHeight)
             let p = IntPoint(x:x, y:y)
             if balls[p] == nil && passable(p) && !(p == player.pos) {
                 balls[p] = gold ? .gold : .white
@@ -165,13 +155,13 @@ final class GameScene: SKScene {
         if let node = world.childNode(withName: "ball_\(p.x)_\(p.y)") as? SKShapeNode {
             switch balls[p] ?? .white {
             case .white: node.fillColor = .white
-            case .gold: node.fillColor = SKColor(red: 0.98, green: 0.75, blue: 0.14, alpha: 1)
+            case .gold: node.fillColor = Theme.goldBall
             }
         }
     }
 
     func passable(_ p: IntPoint) -> Bool {
-        guard p.x >= 0, p.y >= 0, p.x < GRID_W, p.y < GRID_H else { return false }
+        guard p.x >= 0, p.y >= 0, p.x < GameConfig.gridWidth, p.y < GameConfig.gridHeight else { return false }
         if obstStatic.contains(p) { return false }
         for ob in obstKinetic { let cur = ob.path[ob.idx]; if cur == p { return false } }
         return true
@@ -224,7 +214,7 @@ final class GameScene: SKScene {
             multiplier = min(multiplier + 0.5, 4.0)
             multExpire = t + 50
             GameAudio.shared.play(.eatGold, on: self)
-            spawnParticle(at: p, color: SKColor(red: 0.98, green: 0.75, blue: 0.14, alpha: 1))
+            spawnParticle(at: p, color: Theme.goldBall)
             #if os(iOS)
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             #endif
@@ -255,7 +245,7 @@ final class GameScene: SKScene {
                 if abs(bp.x - pos.x) + abs(bp.y - pos.y) <= 2, tball == .white {
                     balls[bp] = .gold
                     refreshBallNode(at: bp)
-                    spawnParticle(at: bp, color: SKColor(red: 0.98, green: 0.75, blue: 0.14, alpha: 1))
+                    spawnParticle(at: bp, color: Theme.goldBall)
                 }
             }
             score += 50; multiplier = min(multiplier + 0.5, 4.0); multExpire = t + 50
@@ -271,8 +261,8 @@ final class GameScene: SKScene {
     }
 
     func spawnEcho() {
-        guard posHistory.count >= ECHO_DELAY, echoes.count < ECHO_LIMIT else { return }
-        let path = Array(posHistory.suffix(ECHO_DELAY))
+        guard posHistory.count >= GameConfig.echoDelay, echoes.count < GameConfig.echoLimit else { return }
+        let path = Array(posHistory.suffix(GameConfig.echoDelay))
         let start = path.first!
         let cs = cellSize()
         var e = Entity(pos: start, prev: start, tail: [],
@@ -292,13 +282,13 @@ final class GameScene: SKScene {
 
     func maybeAddKineticObstacle() {
         guard obstKinetic.count < 4 else { return }
-        let y = Int.random(in: 0..<(GRID_H-3))
-        let len = clamp(3 + Int.random(in: 0...3), 3, GRID_W-2)
-        let x0 = clamp(1 + Int.random(in: 0..<(GRID_W-len-1)), 1, GRID_W-len-1)
+        let y = Int.random(in: 0..<(GameConfig.gridHeight-3))
+        let len = clamp(3 + Int.random(in: 0...3), 3, GameConfig.gridWidth-2)
+        let x0 = clamp(1 + Int.random(in: 0..<(GameConfig.gridWidth-len-1)), 1, GameConfig.gridWidth-len-1)
         var path: [IntPoint] = []
         for x in x0..<(x0+len) { path.append(IntPoint(x:x, y:y)) }
         for x in stride(from: x0+len-2, to: x0, by: -1) { path.append(IntPoint(x:x, y:y)) }
-        if path.contains(IntPoint(x: GRID_W/2, y: GRID_H-1)) { return }
+        if path.contains(IntPoint(x: GameConfig.gridWidth/2, y: GameConfig.gridHeight-1)) { return }
         let node = newRect(CGSize(width: cellSize().width*0.9, height: cellSize().height*0.9),
                            color: SKColor(red: 0.28, green: 0.34, blue: 0.45, alpha: 1))
         node.position = pointFor(path.first!)
@@ -337,9 +327,9 @@ final class GameScene: SKScene {
     func tick() {
         let cmd = waitingHold ? "W" : (continuousDir ?? "W")
         _ = tryMove(&player, dir: cmd, isPlayer: true)
-        posHistory.append(player.pos); if posHistory.count > (ECHO_DELAY*ECHO_LIMIT + 60) { _ = posHistory.removeFirst() }
+        posHistory.append(player.pos); if posHistory.count > (GameConfig.echoDelay*GameConfig.echoLimit + 60) { _ = posHistory.removeFirst() }
 
-        if t == nextEchoSpawn { spawnEcho(); nextEchoSpawn += ECHO_DELAY }
+        if t == nextEchoSpawn { spawnEcho(); nextEchoSpawn += GameConfig.echoDelay }
 
         // 回声逐 Tick（时钟刻）沿记录路径行进
         for i in (0..<echoes.count).reversed() {
@@ -363,12 +353,12 @@ final class GameScene: SKScene {
         handleEchoFusion()
 
         // 动态障碍移动
-        if t % KINETIC_PERIOD == 0 {
+        if t % GameConfig.kineticPeriod == 0 {
             for i in 0..<obstKinetic.count {
                 var ob = obstKinetic[i]
                 ob.idx = (ob.idx + 1) % ob.path.count
                 ob.lastMoveT = t
-                ob.node.run(.move(to: pointFor(ob.path[ob.idx]), duration: tickInterval*Double(KINETIC_PERIOD)))
+                ob.node.run(.move(to: pointFor(ob.path[ob.idx]), duration: tickInterval*Double(GameConfig.kineticPeriod)))
                 obstKinetic[i] = ob
             }
         }
@@ -383,20 +373,20 @@ final class GameScene: SKScene {
         if multExpire >= 0 && t >= multExpire { multiplier = 1.0; multExpire = -1 }
 
         // 补球
-        if t - lastBallSpawn >= BALL_INTERVAL {
+        if t - lastBallSpawn >= GameConfig.ballInterval {
             lastBallSpawn = t
-            if balls.count < BALL_CAP { addBallRandom(false) }
+            if balls.count < GameConfig.ballCap { addBallRandom(false) }
         }
 
         // 难度提升
-        if t - lastSpeedUp >= SPEED_STEP {
+        if t - lastSpeedUp >= GameConfig.speedStep {
             lastSpeedUp = t
             tickRate = min(20, tickRate * 1.08)
             maybeAddKineticObstacle()
         }
 
         t += 1
-        timeSec = Double(t) / TICK_BASE
+        timeSec = Double(t) / GameConfig.tickBase
         updateHUD()
     }
 

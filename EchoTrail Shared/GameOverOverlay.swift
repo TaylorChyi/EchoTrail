@@ -9,9 +9,9 @@ final class GameOverOverlay: SKNode {
 
     override init() {
         background = SKShapeNode()
-        label = SKLabelNode(fontNamed: "Menlo-Bold")
+        label = SKLabelNode(fontNamed: UIConfig.HUD.fontName)
         super.init()
-        label.fontSize = 14
+        label.fontSize = UIConfig.HUD.fontSize
         label.fontColor = .white
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center

@@ -3,8 +3,6 @@ import SpriteKit
 /// 负责分数、倍数、时间与回声峰值的统一 UI 管理
 final class HUDManager: SKNode {
     private enum Layout {
-        static let fontName = "Menlo-Bold"
-        static let fontSize: CGFloat = 14
         static let lineHeight: CGFloat = 24
         static let padding: CGFloat = 12
         static let corner: CGFloat = 12
@@ -12,10 +10,10 @@ final class HUDManager: SKNode {
     }
 
     private let background: SKShapeNode
-    private let scoreLabel = SKLabelNode(fontNamed: Layout.fontName)
-    private let multLabel = SKLabelNode(fontNamed: Layout.fontName)
-    private let timeLabel = SKLabelNode(fontNamed: Layout.fontName)
-    private let echoLabel = SKLabelNode(fontNamed: Layout.fontName)
+    private let scoreLabel = SKLabelNode(fontNamed: UIConfig.HUD.fontName)
+    private let multLabel = SKLabelNode(fontNamed: UIConfig.HUD.fontName)
+    private let timeLabel = SKLabelNode(fontNamed: UIConfig.HUD.fontName)
+    private let echoLabel = SKLabelNode(fontNamed: UIConfig.HUD.fontName)
 
     init(sceneSize: CGSize) {
         let height = Layout.padding * 2 + Layout.lineHeight * 4
@@ -36,7 +34,7 @@ final class HUDManager: SKNode {
     private func setupLabels(height: CGFloat) {
         let labels = [scoreLabel, multLabel, timeLabel, echoLabel]
         for (i, label) in labels.enumerated() {
-            label.fontSize = Layout.fontSize
+            label.fontSize = UIConfig.HUD.fontSize
             label.fontColor = .white
             label.horizontalAlignmentMode = .left
             label.verticalAlignmentMode = .top
