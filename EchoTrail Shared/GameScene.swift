@@ -66,6 +66,7 @@ final class GameScene: SKScene {
     let world = SKNode()
     let hud = SKNode()
     var hudManager: HUDManager!
+    private let gameOverOverlay = GameOverOverlay()
 
     // 虚拟摇杆（iOS 使用）
     let joystick = JoystickView()
@@ -120,6 +121,7 @@ final class GameScene: SKScene {
 
     // 地图与实体
     func buildMap() {
+        gameOverOverlay.hide()
         world.removeAllChildren()
         echoes.removeAll()
         obstKinetic.removeAll()
@@ -206,7 +208,7 @@ final class GameScene: SKScene {
     func pushTail(_ e: inout Entity) { e.tail.insert(e.pos, at: 0); if e.tail.count > 6 { _ = e.tail.popLast() } }
 
     func tryMove(_ e: inout Entity, dir: String, isPlayer: Bool) -> Bool {
-        let dmap: [String:(Int,Int)] = ["U":(0,-1),"D":(0,1),"L":(-1,0),"R":(1,0),"W":(0,0)]
+        let dmap: [String:(Int,Int)] = ["U":(0,1),"D":(0,-1),"L":(-1,0),"R":(1,0),"W":(0,0)]
         let d = dmap[dir] ?? (0,0)
         let np = IntPoint(x: e.pos.x + d.0, y: e.pos.y + d.1)
         e.prev = e.pos
@@ -345,9 +347,8 @@ final class GameScene: SKScene {
         #if os(iOS)
         UINotificationFeedbackGenerator().notificationOccurred(.error)
         #endif
-        let label = SKLabelNode(text: "游戏结束：\(reason)  分数 \(score)  生存 \(String(format: "%.1f", timeSec)) 秒  峰值回声 \(epeak)")
-        label.fontName = "Menlo-Bold"; label.fontSize = 14; label.position = CGPoint(x: size.width/2, y: size.height/2)
-        addChild(label)
+        let message = "游戏结束：\(reason)\n分数 \(score)  生存 \(String(format: "%.1f", timeSec)) 秒\n峰值回声 \(epeak)"
+        gameOverOverlay.show(message: message, in: self)
     }
 
     // 主更新
