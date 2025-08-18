@@ -10,18 +10,23 @@ import AVFoundation
 final class GameAudio {
     static let shared = GameAudio()
 
+    enum Music: String {
+        case menu = "bg_menu_loop.mp3"
+        case game = "bg_game_loop.mp3"
+    }
+
     private var musicPlayer: AVAudioPlayer?
     private var fadingPlayer: AVAudioPlayer?
     private var link: CADisplayLink?
     private var startTime: CFTimeInterval = 0
     private var fadeDur: CFTimeInterval = 0.45
-    private var targetName: String = ""
+    private var currentTrack: Music?
 
     private init() { }
 
     // 对外接口
-    func playMenu() { crossfade(to: "bg_menu_loop.caf") }
-    func playGame() { crossfade(to: "bg_game_loop.caf") }
+    func playMenu() { crossfade(to: .menu) }
+    func playGame() { crossfade(to: .game) }
     func stopMusic() {
         musicPlayer?.stop()
         musicPlayer = nil
@@ -32,9 +37,10 @@ final class GameAudio {
     }
 
     // 交叉淡入淡出
-    private func crossfade(to file: String) {
-        guard targetName != file else { return } // 同曲则不切
-        targetName = file
+    private func crossfade(to track: Music) {
+        guard currentTrack != track else { return } // 同曲则不切
+        currentTrack = track
+        let file = track.rawValue
         let next = makePlayer(file)
         next?.volume = 0
         next?.numberOfLoops = -1
