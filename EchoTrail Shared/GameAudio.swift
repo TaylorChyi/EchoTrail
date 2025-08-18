@@ -6,6 +6,7 @@
 //
 
 import AVFoundation
+import SpriteKit
 
 final class GameAudio {
     static let shared = GameAudio()
@@ -15,12 +16,26 @@ final class GameAudio {
         case game = "bg_game_loop.mp3"
     }
 
+    enum SFX: String {
+        case eatWhite = "sfx_eat_white"
+        case eatGold = "sfx_eat_gold"
+        case echoSpawn = "sfx_echo_spawn"
+        case echoFuse = "sfx_echo_fuse"
+        case bumpWall = "sfx_bump_wall"
+        case gameOver = "sfx_game_over"
+
+        private static let basePath = "Audio/SFX"
+
+        var filePath: String { "\(SFX.basePath)/\(rawValue).mp3" }
+    }
+
     private var musicPlayer: AVAudioPlayer?
     private var fadingPlayer: AVAudioPlayer?
     private var link: CADisplayLink?
     private var startTime: CFTimeInterval = 0
     private var fadeDur: CFTimeInterval = 0.45
     private var currentTrack: Music?
+    private var sfxActions: [SFX: SKAction] = [:]
 
     private init() { }
 
@@ -75,6 +90,23 @@ final class GameAudio {
         link = CADisplayLink(target: self, selector: #selector(step))
         startTime = CACurrentMediaTime()
         link?.add(to: .main, forMode: .common)
+    }
+
+    func play(_ sfx: SFX, on node: SKNode) {
+        let action: SKAction
+        if let cached = sfxActions[sfx] {
+            action = cached
+        } else {
+            let path = sfx.filePath
+            guard Bundle.main.path(forResource: path, ofType: nil) != nil else {
+                print("SFX file not found: \(path)")
+                return
+            }
+            let newAction = SKAction.playSoundFileNamed(path, waitForCompletion: false)
+            sfxActions[sfx] = newAction
+            action = newAction
+        }
+        node.run(action)
     }
 
     @objc private func step() {

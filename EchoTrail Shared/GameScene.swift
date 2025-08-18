@@ -6,7 +6,6 @@
 //
 
 import SpriteKit
-import AVFoundation
 
 final class GameScene: SKScene {
 
@@ -20,16 +19,6 @@ final class GameScene: SKScene {
     let SPEED_STEP = 100
     let KINETIC_PERIOD = 5
     
-    // 音频清单
-    enum SFX: String {
-        case eatWhite = "sfx_eat_white.mp3"
-        case eatGold  = "sfx_eat_gold.mp3"
-        case echoSpawn = "sfx_echo_spawn.mp3"
-        case echoFuse  = "sfx_echo_fuse.mp3"
-        case bumpWall  = "sfx_bump_wall.mp3"
-        case gameOver  = "sfx_game_over.mp3"
-    }
-
     // 状态
     enum State { case idle, playing, paused, over }
     var state: State = .idle
@@ -87,23 +76,6 @@ final class GameScene: SKScene {
         let n = SKShapeNode(rectOf: size, cornerRadius: 10)
         n.fillColor = color; n.strokeColor = color.withAlphaComponent(0.9)
         return n
-    }
-
-    // 音效文件存在性检查和安全播放
-    func audioFileExists(_ filename: String) -> Bool {
-        let name = (filename as NSString).deletingPathExtension
-        let ext = (filename as NSString).pathExtension
-        if ext.isEmpty {
-            return Bundle.main.url(forResource: name, withExtension: nil) != nil
-        } else {
-            return Bundle.main.url(forResource: name, withExtension: ext) != nil
-        }
-    }
-
-    func playSFXIfAvailable(_ sfx: SFX) {
-        let file = sfx.rawValue
-        guard audioFileExists(file) else { return }
-        run(.playSoundFileNamed(file, waitForCompletion: false))
     }
 
     // 生命周期
@@ -216,7 +188,7 @@ final class GameScene: SKScene {
             return true
         } else {
             if isPlayer && dir != "W" && (t - lastBumpTick) > 5 {
-                playSFXIfAvailable(.bumpWall)
+                GameAudio.shared.play(.bumpWall, on: self)
                 #if os(iOS)
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 #endif
@@ -230,7 +202,7 @@ final class GameScene: SKScene {
         if balls[p] == .white {
             balls[p] = .gold
             refreshBallNode(at: p)
-            playSFXIfAvailable(.eatWhite)
+            GameAudio.shared.play(.eatWhite, on: self)
         }
     }
 
@@ -240,7 +212,7 @@ final class GameScene: SKScene {
         switch tball {
         case .white:
             score += 10
-            playSFXIfAvailable(.eatWhite)
+            GameAudio.shared.play(.eatWhite, on: self)
             spawnParticle(at: p, color: .white)
             #if os(iOS)
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -249,7 +221,7 @@ final class GameScene: SKScene {
             score += Int(30 * multiplier.rounded(.towardZero))
             multiplier = min(multiplier + 0.5, 4.0)
             multExpire = t + 50
-            playSFXIfAvailable(.eatGold)
+            GameAudio.shared.play(.eatGold, on: self)
             spawnParticle(at: p, color: SKColor(red: 0.98, green: 0.75, blue: 0.14, alpha: 1))
             #if os(iOS)
             UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -285,7 +257,7 @@ final class GameScene: SKScene {
                 }
             }
             score += 50; multiplier = min(multiplier + 0.5, 4.0); multExpire = t + 50
-            playSFXIfAvailable(.echoFuse)
+            GameAudio.shared.play(.echoFuse, on: self)
             #if os(iOS)
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             #endif
@@ -310,7 +282,7 @@ final class GameScene: SKScene {
         world.addChild(e.node)
         echoes.append(e)
         epeak = max(epeak, echoes.count)
-        playSFXIfAvailable(.echoSpawn)
+        GameAudio.shared.play(.echoSpawn, on: self)
         #if os(iOS)
         UIImpactFeedbackGenerator(style: .soft).impactOccurred()
         #endif
@@ -340,7 +312,7 @@ final class GameScene: SKScene {
 
     func gameOver(_ reason: String) {
         state = .over
-        playSFXIfAvailable(.gameOver)
+        GameAudio.shared.play(.gameOver, on: self)
         GameAudio.shared.stopMusic()
         #if os(iOS)
         UINotificationFeedbackGenerator().notificationOccurred(.error)
