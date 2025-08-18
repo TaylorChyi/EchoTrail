@@ -55,10 +55,9 @@ final class GameScene: SKScene {
     let hud = SKNode()
     var hudManager: HUDManager!
     private let gameOverOverlay = GameOverOverlay()
+    var inputController: InputControllerProtocol!
 
     // 虚拟摇杆（iOS 使用）
-    let joystick = JoystickView()
-    var joyActive = false
 
     // 驱动
     var lastUpdate: TimeInterval = 0
@@ -85,7 +84,13 @@ final class GameScene: SKScene {
         addChild(hud)
         hudManager = HUDManager(sceneSize: size)
         hud.addChild(hudManager)
-        hud.addChild(joystick)
+        #if os(iOS)
+        inputController = TouchInputController()
+        #elseif os(macOS)
+        inputController = KeyboardInputController()
+        #endif
+        inputController.delegate = self
+        inputController.configure(scene: self)
         buildMap()
         enterIdle()
     }
@@ -393,42 +398,19 @@ final class GameScene: SKScene {
     func enterIdle() { state = .idle; GameAudio.shared.stopMusic(); GameAudio.shared.playMenu() }
     func enterPlaying() { state = .playing; GameAudio.shared.stopMusic(); GameAudio.shared.playGame() }
 
-    // 触控（iOS）
-    #if os(iOS)
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let t = touches.first else { return }
-        joystick.activate(at: t.location(in: self), in: size)
-        joyActive = true
-        waitingHold = false
-        if state == .idle || state == .over { buildMap(); enterPlaying() }
-    }
-    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard joyActive, let t = touches.first else { return }
-        let vec = joystick.update(to: t.location(in: self))
-        let dx = vec.dx, dy = vec.dy
-        let dist = hypot(dx, dy)
-        let dead: CGFloat = 0.14
-        if dist < dead { continuousDir = nil; waitingHold = true; return }
-        waitingHold = false
-        if abs(dx) > abs(dy) { continuousDir = dx > 0 ? "R" : "L" } else { continuousDir = dy > 0 ? "U" : "D" }
-    }
-    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        joystick.deactivate(); joyActive = false; continuousDir = nil; waitingHold = false
-    }
-    #endif
 
-    // 键盘（macOS 或外接键盘）
-    #if os(macOS)
-    override func keyDown(with event: NSEvent) {
-        let map: [UInt16:String] = [126:"U",125:"D",123:"L",124:"R"]
-        if let dir = map[event.keyCode] { continuousDir = dir }
-        if event.charactersIgnoringModifiers == " " { waitingHold = true }
+}
+
+extension GameScene: InputControllerDelegate {
+    func directionChanged(to direction: String?) {
+        continuousDir = direction
+    }
+
+    func holdChanged(isHolding: Bool) {
+        waitingHold = isHolding
+    }
+
+    func startRequested() {
         if state == .idle || state == .over { buildMap(); enterPlaying() }
     }
-    override func keyUp(with event: NSEvent) {
-        let map: [UInt16:String] = [126:"U",125:"D",123:"L",124:"R"]
-        if map[event.keyCode] != nil { continuousDir = nil }
-        if event.charactersIgnoringModifiers == " " { waitingHold = false }
-    }
-    #endif
 }
