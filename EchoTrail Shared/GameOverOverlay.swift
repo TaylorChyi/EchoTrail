@@ -4,14 +4,14 @@ import SpriteKit
 final class GameOverOverlay: SKNode {
     private let background: SKShapeNode
     private let label: SKLabelNode
-    private let padding: CGFloat = 20
-    private let corner: CGFloat = 16
+    private let padding: CGFloat = UIConfig.GameOverOverlay.padding
+    private let corner: CGFloat = UIConfig.GameOverOverlay.corner
 
     override init() {
         background = SKShapeNode()
-        label = SKLabelNode(fontNamed: "Menlo-Bold")
+        label = SKLabelNode(fontNamed: UIConfig.Font.primary)
         super.init()
-        label.fontSize = 14
+        label.fontSize = UIConfig.Font.hudSize
         label.fontColor = .white
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center
