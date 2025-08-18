@@ -12,19 +12,19 @@ final class GameAudio {
     static let shared = GameAudio()
 
     enum Music: String {
-        case menu = "bg_menu_loop.mp3"
-        case game = "bg_game_loop.mp3"
+        case menu = AudioConfig.Music.menu
+        case game = AudioConfig.Music.game
     }
 
     enum SFX: String {
-        case eatWhite = "sfx_eat_white"
-        case eatGold = "sfx_eat_gold"
-        case echoSpawn = "sfx_echo_spawn"
-        case echoFuse = "sfx_echo_fuse"
-        case bumpWall = "sfx_bump_wall"
-        case gameOver = "sfx_game_over"
+        case eatWhite = AudioConfig.SFX.eatWhite
+        case eatGold = AudioConfig.SFX.eatGold
+        case echoSpawn = AudioConfig.SFX.echoSpawn
+        case echoFuse = AudioConfig.SFX.echoFuse
+        case bumpWall = AudioConfig.SFX.bumpWall
+        case gameOver = AudioConfig.SFX.gameOver
 
-        private static let basePath = "Audio/SFX"
+        private static let basePath = AudioConfig.SFX.basePath
 
         var filePath: String { "\(SFX.basePath)/\(rawValue).mp3" }
     }
