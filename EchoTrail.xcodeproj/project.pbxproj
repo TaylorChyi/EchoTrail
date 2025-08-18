@@ -20,35 +20,45 @@
 		E1059B462E5384090024A1F7 /* Exceptions for "EchoTrail Shared" folder in "EchoTrail iOS" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Actions.sks,
-				Assets.xcassets,
-				GameAudio.swift,
-				GameOverOverlay.swift,
-				GameScene.sks,
-				GameScene.swift,
-				HUDManager.swift,
-				IntPoint.swift,
-				JoystickView.swift,
-				Theme.swift,
-			);
-			target = E1059B222E5384090024A1F7 /* EchoTrail iOS */;
-		};
-		E1059B4A2E5384090024A1F7 /* Exceptions for "EchoTrail Shared" folder in "EchoTrail macOS" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Actions.sks,
-				Assets.xcassets,
-				GameAudio.swift,
-				GameOverOverlay.swift,
-				GameScene.sks,
-				GameScene.swift,
-				HUDManager.swift,
-				IntPoint.swift,
-				JoystickView.swift,
-				Theme.swift,
-			);
-			target = E1059B332E5384090024A1F7 /* EchoTrail macOS */;
-		};
+                                Actions.sks,
+                                Assets.xcassets,
+                                Audio,
+                                Config,
+                                Core,
+                                Entity.swift,
+                                GameAudio.swift,
+                                GameOverOverlay.swift,
+                                GameScene.sks,
+                                GameScene.swift,
+                                HUDManager.swift,
+                                Input,
+                                IntPoint.swift,
+                                JoystickView.swift,
+                                Theme.swift,
+                        );
+                        target = E1059B222E5384090024A1F7 /* EchoTrail iOS */;
+                };
+                E1059B4A2E5384090024A1F7 /* Exceptions for "EchoTrail Shared" folder in "EchoTrail macOS" target */ = {
+                        isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+                        membershipExceptions = (
+                                Actions.sks,
+                                Assets.xcassets,
+                                Audio,
+                                Config,
+                                Core,
+                                Entity.swift,
+                                GameAudio.swift,
+                                GameOverOverlay.swift,
+                                GameScene.sks,
+                                GameScene.swift,
+                                HUDManager.swift,
+                                Input,
+                                IntPoint.swift,
+                                JoystickView.swift,
+                                Theme.swift,
+                        );
+                        target = E1059B332E5384090024A1F7 /* EchoTrail macOS */;
+                };
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
