@@ -8,25 +8,49 @@
 import AVFoundation
 import SpriteKit
 
+/// 游戏音频管理，集中处理音乐与音效。
 final class GameAudio {
     static let shared = GameAudio()
 
-    enum Music: String {
-        case menu = AudioConfig.Music.menu
-        case game = AudioConfig.Music.game
+    /// 背景音乐资源枚举
+    enum Music {
+        case menu
+        case game
+
+        /// 对应文件名
+        var fileName: String {
+            switch self {
+            case .menu: return AudioConfig.Music.menu
+            case .game: return AudioConfig.Music.game
+            }
+        }
     }
 
-    enum SFX: String {
-        case eatWhite = AudioConfig.SFX.eatWhite
-        case eatGold = AudioConfig.SFX.eatGold
-        case echoSpawn = AudioConfig.SFX.echoSpawn
-        case echoFuse = AudioConfig.SFX.echoFuse
-        case bumpWall = AudioConfig.SFX.bumpWall
-        case gameOver = AudioConfig.SFX.gameOver
+    /// 音效资源枚举
+    enum SFX: Hashable {
+        case eatWhite
+        case eatGold
+        case echoSpawn
+        case echoFuse
+        case bumpWall
+        case gameOver
 
         private static let basePath = AudioConfig.SFX.basePath
 
-        var filePath: String { "\(SFX.basePath)/\(rawValue).mp3" }
+        /// 对应文件名（不含路径与后缀）
+        private var fileName: String {
+            switch self {
+            case .eatWhite: return AudioConfig.SFX.eatWhite
+            case .eatGold: return AudioConfig.SFX.eatGold
+            case .echoSpawn: return AudioConfig.SFX.echoSpawn
+            case .echoFuse: return AudioConfig.SFX.echoFuse
+            case .bumpWall: return AudioConfig.SFX.bumpWall
+            case .gameOver: return AudioConfig.SFX.gameOver
+            }
+        }
+
+        /// 完整文件路径
+        var filePath: String { "\(SFX.basePath)/\(fileName).mp3" }
     }
 
     private var musicPlayer: AVAudioPlayer?
@@ -37,25 +61,22 @@ final class GameAudio {
     private var currentTrack: Music?
     private var sfxActions: [SFX: SKAction] = [:]
 
-    private init() { }
+    private init() {}
 
     // 对外接口
     func playMenu() { crossfade(to: .menu) }
     func playGame() { crossfade(to: .game) }
     func stopMusic() {
-        musicPlayer?.stop()
-        musicPlayer = nil
-        fadingPlayer?.stop()
-        fadingPlayer = nil
-        link?.invalidate()
-        link = nil
+        musicPlayer?.stop(); musicPlayer = nil
+        fadingPlayer?.stop(); fadingPlayer = nil
+        link?.invalidate(); link = nil
     }
 
     // 交叉淡入淡出
     private func crossfade(to track: Music) {
         guard currentTrack != track else { return } // 同曲则不切
         currentTrack = track
-        let file = track.rawValue
+        let file = track.fileName
         let next = makePlayer(file)
         next?.volume = 0
         next?.numberOfLoops = -1
@@ -115,10 +136,8 @@ final class GameAudio {
         musicPlayer?.volume = Float(k)         // 淡入
         fadingPlayer?.volume = Float(1 - k)    // 淡出
         if k >= 1 {
-            fadingPlayer?.stop()
-            fadingPlayer = nil
-            link?.invalidate()
-            link = nil
+            fadingPlayer?.stop(); fadingPlayer = nil
+            link?.invalidate(); link = nil
         }
     }
 }
