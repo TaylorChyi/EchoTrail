@@ -19,6 +19,8 @@ class GameViewController: UIViewController {
         skView.ignoresSiblingOrder = true
 
         let scene = GameScene(size: skView.bounds.size)
+        let controller = TouchInputController(scene: scene)
+        scene.input = controller
         scene.scaleMode = .resizeFill
         skView.presentScene(scene)
     }

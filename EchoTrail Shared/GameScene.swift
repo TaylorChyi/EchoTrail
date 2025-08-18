@@ -48,8 +48,7 @@ final class GameScene: SKScene {
     var lastSpeedUp = 0
 
     var posHistory: [IntPoint] = []
-    var continuousDir: String? = nil
-    var waitingHold = false
+    var input: InputController!
 
     // 实体
     struct Entity { var pos: IntPoint; var prev: IntPoint; var tail: [IntPoint]; var node: SKShapeNode }
@@ -73,8 +72,6 @@ final class GameScene: SKScene {
     // 虚拟摇杆（iOS 使用）
     let joyBg = SKShapeNode(circleOfRadius: 75)
     let joyKnob = SKShapeNode(circleOfRadius: 32)
-    var joyActive = false
-    var joyOrigin = CGPoint.zero
 
     // 驱动
     var lastUpdate: TimeInterval = 0
@@ -119,6 +116,13 @@ final class GameScene: SKScene {
         setupJoystick()
         buildMap()
         enterIdle()
+        input.onStart = { [weak self] in
+            guard let self = self else { return }
+            if self.state == .idle || self.state == .over {
+                self.buildMap()
+                self.enterPlaying()
+            }
+        }
     }
 
     func setupHUD() {
@@ -386,7 +390,7 @@ final class GameScene: SKScene {
     }
 
     func tick() {
-        let cmd = waitingHold ? "W" : (continuousDir ?? "W")
+        let cmd = input.isWaiting ? "W" : (input.currentDirection ?? "W")
         _ = tryMove(&player, dir: cmd, isPlayer: true)
         posHistory.append(player.pos); if posHistory.count > (ECHO_DELAY*ECHO_LIMIT + 60) { _ = posHistory.removeFirst() }
 
@@ -465,42 +469,23 @@ final class GameScene: SKScene {
     // 触控（iOS）
     #if os(iOS)
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let t = touches.first else { return }
-        joyOrigin = t.location(in: self)
-        joyBg.position = joyOrigin; joyKnob.position = joyOrigin
-        joyBg.isHidden = false; joyKnob.isHidden = false; joyActive = true
-        waitingHold = false
-        if state == .idle || state == .over { buildMap(); enterPlaying() }
+        input.touchesBegan(touches, with: event, in: self)
     }
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard joyActive, let t = touches.first else { return }
-        let p = t.location(in: self)
-        let dx = p.x - joyOrigin.x, dy = p.y - joyOrigin.y
-        let dist = hypot(dx, dy); let ang = atan2(dy, dx)
-        let maxR: CGFloat = 50; let r = min(maxR, dist)
-        joyKnob.position = CGPoint(x: joyOrigin.x + cos(ang)*r, y: joyOrigin.y + sin(ang)*r)
-        let dead: CGFloat = 14
-        if dist < dead { continuousDir = nil; waitingHold = true; return }
-        waitingHold = false
-        if abs(dx) > abs(dy) { continuousDir = dx > 0 ? "R" : "L" } else { continuousDir = dy > 0 ? "U" : "D" }
+        input.touchesMoved(touches, with: event, in: self)
     }
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        joyActive = false; joyBg.isHidden = true; joyKnob.isHidden = true; continuousDir = nil; waitingHold = false
+        input.touchesEnded(touches, with: event, in: self)
     }
     #endif
 
     // 键盘（macOS 或外接键盘）
     #if os(macOS)
     override func keyDown(with event: NSEvent) {
-        let map: [UInt16:String] = [126:"U",125:"D",123:"L",124:"R"]
-        if let dir = map[event.keyCode] { continuousDir = dir }
-        if event.charactersIgnoringModifiers == " " { waitingHold = true }
-        if state == .idle || state == .over { buildMap(); enterPlaying() }
+        input.keyDown(event, in: self)
     }
     override func keyUp(with event: NSEvent) {
-        let map: [UInt16:String] = [126:"U",125:"D",123:"L",124:"R"]
-        if map[event.keyCode] != nil { continuousDir = nil }
-        if event.charactersIgnoringModifiers == " " { waitingHold = false }
+        input.keyUp(event, in: self)
     }
     #endif
 }

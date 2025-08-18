@@ -19,6 +19,8 @@ class GameViewController: NSViewController {
         skView.ignoresSiblingOrder = true
 
         let scene = GameScene(size: skView.bounds.size)
+        let controller = KeyboardInputController(scene: scene)
+        scene.input = controller
         scene.scaleMode = .resizeFill
         skView.presentScene(scene)
 
