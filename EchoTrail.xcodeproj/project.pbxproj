@@ -6,9 +6,14 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		E1059B5B2E538ED30024A1F7 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = E1059B5A2E538EC90024A1F7 /* README.md */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		E1059B232E5384090024A1F7 /* EchoTrail.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EchoTrail.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E1059B342E5384090024A1F7 /* EchoTrail.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EchoTrail.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E1059B5A2E538EC90024A1F7 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -81,6 +86,7 @@
 		E1059B152E5384070024A1F7 = {
 			isa = PBXGroup;
 			children = (
+				E1059B5A2E538EC90024A1F7 /* README.md */,
 				E1059B1A2E5384070024A1F7 /* EchoTrail Shared */,
 				E1059B252E5384090024A1F7 /* EchoTrail iOS */,
 				E1059B352E5384090024A1F7 /* EchoTrail macOS */,
@@ -187,6 +193,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E1059B5B2E538ED30024A1F7 /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
