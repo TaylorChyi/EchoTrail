@@ -65,16 +65,11 @@ final class GameScene: SKScene {
     // 渲染容器与 UI（User Interface（用户界面））
     let world = SKNode()
     let hud = SKNode()
-    let scoreLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-    let multLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-    let timeLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-    let epeakLabel = SKLabelNode(fontNamed: "Menlo-Bold")
+    var hudManager: HUDManager!
 
     // 虚拟摇杆（iOS 使用）
-    let joyBg = SKShapeNode(circleOfRadius: 75)
-    let joyKnob = SKShapeNode(circleOfRadius: 32)
+    let joystick = JoystickView()
     var joyActive = false
-    var joyOrigin = CGPoint.zero
 
     // 驱动
     var lastUpdate: TimeInterval = 0
@@ -115,31 +110,11 @@ final class GameScene: SKScene {
         backgroundColor = SKColor(red: 0.04, green: 0.06, blue: 0.08, alpha: 1)
         addChild(world)
         addChild(hud)
-        setupHUD()
-        setupJoystick()
+        hudManager = HUDManager(sceneSize: size)
+        hud.addChild(hudManager)
+        hud.addChild(joystick)
         buildMap()
         enterIdle()
-    }
-
-    func setupHUD() {
-        let labs = [scoreLabel, multLabel, timeLabel, epeakLabel]
-        for (i, l) in labs.enumerated() {
-            l.fontSize = 14; l.fontColor = .white; l.horizontalAlignmentMode = .left
-            l.position = CGPoint(x: 12, y: size.height - CGFloat(24 + i*20))
-            hud.addChild(l)
-        }
-        updateHUD()
-    }
-
-    func setupJoystick() {
-        joyBg.fillColor = SKColor(white: 1, alpha: 0.08)
-        joyBg.strokeColor = SKColor(white: 1, alpha: 0.18)
-        joyBg.zPosition = 1000
-        joyKnob.fillColor = SKColor(red: 0.45, green: 0.82, blue: 0.95, alpha: 0.3)
-        joyKnob.strokeColor = SKColor(white: 1, alpha: 0.25)
-        joyKnob.zPosition = 1001
-        joyBg.isHidden = true; joyKnob.isHidden = true
-        hud.addChild(joyBg); hud.addChild(joyKnob)
     }
 
     // 地图与实体
@@ -452,10 +427,7 @@ final class GameScene: SKScene {
     }
 
     func updateHUD() {
-        scoreLabel.text = "分数 \(score)"
-        multLabel.text = String(format: "倍数 %.1f×", multiplier)
-        timeLabel.text = String(format: "时间 %.1fs", timeSec)
-        epeakLabel.text = "回声 \(epeak)"
+        hudManager.update(score: score, multiplier: multiplier, time: timeSec, echoPeak: epeak)
     }
 
     // 状态切换
@@ -466,26 +438,23 @@ final class GameScene: SKScene {
     #if os(iOS)
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let t = touches.first else { return }
-        joyOrigin = t.location(in: self)
-        joyBg.position = joyOrigin; joyKnob.position = joyOrigin
-        joyBg.isHidden = false; joyKnob.isHidden = false; joyActive = true
+        joystick.activate(at: t.location(in: self), in: size)
+        joyActive = true
         waitingHold = false
         if state == .idle || state == .over { buildMap(); enterPlaying() }
     }
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard joyActive, let t = touches.first else { return }
-        let p = t.location(in: self)
-        let dx = p.x - joyOrigin.x, dy = p.y - joyOrigin.y
-        let dist = hypot(dx, dy); let ang = atan2(dy, dx)
-        let maxR: CGFloat = 50; let r = min(maxR, dist)
-        joyKnob.position = CGPoint(x: joyOrigin.x + cos(ang)*r, y: joyOrigin.y + sin(ang)*r)
-        let dead: CGFloat = 14
+        let vec = joystick.update(to: t.location(in: self))
+        let dx = vec.dx, dy = vec.dy
+        let dist = hypot(dx, dy)
+        let dead: CGFloat = 0.14
         if dist < dead { continuousDir = nil; waitingHold = true; return }
         waitingHold = false
         if abs(dx) > abs(dy) { continuousDir = dx > 0 ? "R" : "L" } else { continuousDir = dy > 0 ? "U" : "D" }
     }
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        joyActive = false; joyBg.isHidden = true; joyKnob.isHidden = true; continuousDir = nil; waitingHold = false
+        joystick.deactivate(); joyActive = false; continuousDir = nil; waitingHold = false
     }
     #endif
 
