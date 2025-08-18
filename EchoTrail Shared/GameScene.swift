@@ -40,16 +40,15 @@ final class GameScene: SKScene {
     var continuousDir: String? = nil
     var waitingHold = false
 
-    // 实体
-    struct Entity { var pos: IntPoint; var prev: IntPoint; var tail: [IntPoint]; var node: SKShapeNode }
-    var player: Entity!
-    var echoes: [Entity] = []
+    // 实体系统
+    let entitySystem = EntitySystem()
+    var player: PlayerEntity!
+    var echoes: [EchoEntity] = []
     enum Ball { case white, gold }
     var balls: [IntPoint: Ball] = [:]
 
-    var obstStatic: Set<IntPoint> = []
-    struct KObstacle { var path: [IntPoint]; var idx: Int; var node: SKShapeNode; var lastMoveT: Int }
-    var obstKinetic: [KObstacle] = []
+    /// All obstacles currently present in the world.
+    var obstacles: [ObstacleEntity] = []
 
     // 渲染容器与 UI（User Interface（用户界面））
     let world = SKNode()
@@ -95,9 +94,9 @@ final class GameScene: SKScene {
     func buildMap() {
         gameOverOverlay.hide()
         world.removeAllChildren()
+        entitySystem.removeAll()
         echoes.removeAll()
-        obstKinetic.removeAll()
-        obstStatic.removeAll()
+        obstacles.removeAll()
         balls.removeAll()
 
         score = 0; multiplier = 1; multExpire = -1; epeak = 0
@@ -106,31 +105,32 @@ final class GameScene: SKScene {
         posHistory.removeAll()
 
         let cs = cellSize()
-        player = Entity(pos: IntPoint(x: GRID_W/2, y: GRID_H-1),
-                        prev: IntPoint(x: GRID_W/2, y: GRID_H-1),
-                        tail: [],
-                        node: newRect(CGSize(width: cs.width*0.8, height: cs.height*0.8),
-                                      color: SKColor(red: 0.13, green: 0.83, blue: 0.93, alpha: 1)))
-        player.node.position = pointFor(player.pos)
-        world.addChild(player.node)
+        let playerNode = newRect(CGSize(width: cs.width*0.8, height: cs.height*0.8),
+                                 color: SKColor(red: 0.13, green: 0.83, blue: 0.93, alpha: 1))
+        player = PlayerEntity(position: IntPoint(x: GRID_W/2, y: GRID_H-1),
+                              node: playerNode)
+        player.node.position = pointFor(player.position)
+        entitySystem.add(player, to: world)
 
         // 固定障碍
         let count = 8 + Int.random(in: 0...5)
         var attempts = 0
-        while obstStatic.count < count && attempts < 200 {
+        while obstacles.count < count && attempts < 200 {
             attempts += 1
             let x = Int.random(in: 0..<GRID_W)
             let y = Int.random(in: 0..<(GRID_H-3))
             if x == GRID_W/2 && y == GRID_H-1 { continue }
             let p = IntPoint(x: x, y: y)
             if y > 0 && y < GRID_H-1 {
-                if obstStatic.contains(IntPoint(x:x, y:y-1)) && obstStatic.contains(IntPoint(x:x, y:y+1)) { continue }
+                if obstacles.contains(where: { $0.position == IntPoint(x:x, y:y-1) }) &&
+                   obstacles.contains(where: { $0.position == IntPoint(x:x, y:y+1) }) { continue }
             }
-            obstStatic.insert(p)
             let n = newRect(CGSize(width: cs.width*0.9, height: cs.height*0.9),
                             color: SKColor(red: 0.06, green: 0.09, blue: 0.16, alpha: 1))
             n.position = pointFor(p)
-            world.addChild(n)
+            let ob = ObstacleEntity(position: p, node: n, pointFor: pointFor)
+            obstacles.append(ob)
+            entitySystem.add(ob, to: world)
         }
 
         // 初始球
@@ -143,7 +143,7 @@ final class GameScene: SKScene {
             let x = Int.random(in: 0..<GRID_W)
             let y = Int.random(in: 0..<GRID_H)
             let p = IntPoint(x:x, y:y)
-            if balls[p] == nil && passable(p) && !(p == player.pos) {
+            if balls[p] == nil && passable(p) && !(p == player.position) {
                 balls[p] = gold ? .gold : .white
                 drawBall(p)
                 break
@@ -172,32 +172,7 @@ final class GameScene: SKScene {
 
     func passable(_ p: IntPoint) -> Bool {
         guard p.x >= 0, p.y >= 0, p.x < GRID_W, p.y < GRID_H else { return false }
-        if obstStatic.contains(p) { return false }
-        for ob in obstKinetic { let cur = ob.path[ob.idx]; if cur == p { return false } }
-        return true
-    }
-
-    func pushTail(_ e: inout Entity) { e.tail.insert(e.pos, at: 0); if e.tail.count > 6 { _ = e.tail.popLast() } }
-
-    func tryMove(_ e: inout Entity, dir: String, isPlayer: Bool) -> Bool {
-        let dmap: [String:(Int,Int)] = ["U":(0,1),"D":(0,-1),"L":(-1,0),"R":(1,0),"W":(0,0)]
-        let d = dmap[dir] ?? (0,0)
-        let np = IntPoint(x: e.pos.x + d.0, y: e.pos.y + d.1)
-        e.prev = e.pos
-        if passable(np) {
-            e.pos = np; pushTail(&e)
-            e.node.run(.move(to: pointFor(e.pos), duration: tickInterval*0.9))
-            return true
-        } else {
-            if isPlayer && dir != "W" && (t - lastBumpTick) > 5 {
-                GameAudio.shared.play(.bumpWall, on: self)
-                #if os(iOS)
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                #endif
-                lastBumpTick = t
-            }
-            pushTail(&e); return false
-        }
+        return !obstacles.contains { $0.position == p }
     }
 
     func upgradeBall(at p: IntPoint) {
@@ -244,11 +219,11 @@ final class GameScene: SKScene {
         }
     }
 
-    func collidePlayerEcho() -> Bool { echoes.contains(where: { $0.pos == player.pos }) }
+    func collidePlayerEcho() -> Bool { echoes.contains(where: { $0.position == player.position }) }
 
     func handleEchoFusion() {
         var map: [IntPoint:[Int]] = [:]
-        for (i, e) in echoes.enumerated() { map[e.pos, default: []].append(i) }
+        for (i, e) in echoes.enumerated() { map[e.position, default: []].append(i) }
         var removeIdx = Set<Int>()
         for (pos, arr) in map where arr.count >= 2 {
             for (bp, tball) in balls {
@@ -275,13 +250,13 @@ final class GameScene: SKScene {
         let path = Array(posHistory.suffix(ECHO_DELAY))
         let start = path.first!
         let cs = cellSize()
-        var e = Entity(pos: start, prev: start, tail: [],
-                       node: newRect(CGSize(width: cs.width*0.8, height: cs.height*0.8),
-                                     color: SKColor(red: 0.38, green: 0.65, blue: 0.98, alpha: 1)))
-        e.node.position = pointFor(start)
-        e.node.alpha = 0.85; e.node.zPosition = 2
-        e.node.userData = ["path": path, "cursor": 0]
-        world.addChild(e.node)
+        let node = newRect(CGSize(width: cs.width*0.8, height: cs.height*0.8),
+                           color: SKColor(red: 0.38, green: 0.65, blue: 0.98, alpha: 1))
+        node.position = pointFor(start)
+        node.alpha = 0.85; node.zPosition = 2
+        node.userData = ["path": path, "cursor": 0]
+        let e = EchoEntity(position: start, delayIndex: 0, node: node)
+        entitySystem.add(e, to: world)
         echoes.append(e)
         epeak = max(epeak, echoes.count)
         GameAudio.shared.play(.echoSpawn, on: self)
@@ -291,7 +266,8 @@ final class GameScene: SKScene {
     }
 
     func maybeAddKineticObstacle() {
-        guard obstKinetic.count < 4 else { return }
+        let kineticCount = obstacles.filter { !$0.path.isEmpty }.count
+        guard kineticCount < 4 else { return }
         let y = Int.random(in: 0..<(GRID_H-3))
         let len = clamp(3 + Int.random(in: 0...3), 3, GRID_W-2)
         let x0 = clamp(1 + Int.random(in: 0..<(GRID_W-len-1)), 1, GRID_W-len-1)
@@ -302,14 +278,18 @@ final class GameScene: SKScene {
         let node = newRect(CGSize(width: cellSize().width*0.9, height: cellSize().height*0.9),
                            color: SKColor(red: 0.28, green: 0.34, blue: 0.45, alpha: 1))
         node.position = pointFor(path.first!)
-        world.addChild(node)
-        obstKinetic.append(KObstacle(path: path, idx: 0, node: node, lastMoveT: t))
+        let ob = ObstacleEntity(position: path.first!,
+                                path: path,
+                                node: node,
+                                pointFor: pointFor,
+                                moveDuration: tickInterval * Double(KINETIC_PERIOD),
+                                period: KINETIC_PERIOD)
+        obstacles.append(ob)
+        entitySystem.add(ob, to: world)
     }
 
     func collideObstacles(_ p: IntPoint) -> Bool {
-        if obstStatic.contains(p) { return true }
-        for ob in obstKinetic { if ob.path[ob.idx] == p { return true } }
-        return false
+        obstacles.contains { $0.position == p }
     }
 
     func gameOver(_ reason: String) {
@@ -336,8 +316,21 @@ final class GameScene: SKScene {
 
     func tick() {
         let cmd = waitingHold ? "W" : (continuousDir ?? "W")
-        _ = tryMove(&player, dir: cmd, isPlayer: true)
-        posHistory.append(player.pos); if posHistory.count > (ECHO_DELAY*ECHO_LIMIT + 60) { _ = posHistory.removeFirst() }
+        let dmap: [String:(Int,Int)] = ["U":(0,1),"D":(0,-1),"L":(-1,0),"R":(1,0),"W":(0,0)]
+        let move = dmap[cmd] ?? (0,0)
+        let moved = player.tryMove(direction: move,
+                                   passable: passable(_:),
+                                   pointFor: pointFor(_:),
+                                   interval: tickInterval)
+        if !moved && cmd != "W" && (t - lastBumpTick) > 5 {
+            GameAudio.shared.play(.bumpWall, on: self)
+            #if os(iOS)
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            #endif
+            lastBumpTick = t
+        }
+        posHistory.append(player.position)
+        if posHistory.count > (ECHO_DELAY*ECHO_LIMIT + 60) { _ = posHistory.removeFirst() }
 
         if t == nextEchoSpawn { spawnEcho(); nextEchoSpawn += ECHO_DELAY }
 
@@ -347,11 +340,11 @@ final class GameScene: SKScene {
             guard var ud = e.node.userData else { continue }
             var path = ud["path"] as! [IntPoint]
             var cursor = ud["cursor"] as! Int
-            e.prev = e.pos
+            e.previousPosition = e.position
             let p = cursor < path.count ? path[cursor] : path.last!
-            e.pos = p
-            e.node.run(.move(to: pointFor(e.pos), duration: tickInterval*0.9))
-            upgradeBall(at: e.pos)
+            e.position = p
+            e.node.run(.move(to: pointFor(e.position), duration: tickInterval*0.9))
+            upgradeBall(at: e.position)
             cursor += 1
             ud["cursor"] = cursor
             e.node.userData = ud
@@ -362,24 +355,16 @@ final class GameScene: SKScene {
         // 回声合鸣
         handleEchoFusion()
 
-        // 动态障碍移动
-        if t % KINETIC_PERIOD == 0 {
-            for i in 0..<obstKinetic.count {
-                var ob = obstKinetic[i]
-                ob.idx = (ob.idx + 1) % ob.path.count
-                ob.lastMoveT = t
-                ob.node.run(.move(to: pointFor(ob.path[ob.idx]), duration: tickInterval*Double(KINETIC_PERIOD)))
-                obstKinetic[i] = ob
-            }
-        }
+        // 更新实体系统（如动态障碍）
+        entitySystem.update(deltaTime: tickInterval)
 
         // 碰撞
-        if collideObstacles(player.pos) { gameOver("撞到障碍"); return }
-        for e in echoes { if collideObstacles(e.pos) { gameOver("回声撞到障碍"); return } }
+        if collideObstacles(player.position) { gameOver("撞到障碍"); return }
+        for e in echoes { if collideObstacles(e.position) { gameOver("回声撞到障碍"); return } }
         if collidePlayerEcho() { gameOver("与回声相撞"); return }
 
         // 拾取
-        collectBall(at: player.pos)
+        collectBall(at: player.position)
         if multExpire >= 0 && t >= multExpire { multiplier = 1.0; multExpire = -1 }
 
         // 补球
