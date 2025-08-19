@@ -3,12 +3,12 @@ import SpriteKit
 /// 负责分数、倍数、时间与回声峰值的统一 UI 管理
 final class HUDManager: SKNode {
     private enum Layout {
-        static let fontName = UIConfig.Font.primary
-        static let fontSize = UIConfig.Font.hudSize
-        static let lineHeight = UIConfig.HUD.lineHeight
-        static let padding = UIConfig.HUD.padding
-        static let corner = UIConfig.HUD.corner
-        static let width = UIConfig.HUD.width
+        static let fontName = Theme.Font.primary
+        static let fontSize = Theme.Font.hudSize
+        static let lineHeight = Theme.HUD.lineHeight
+        static let padding = Theme.HUD.padding
+        static let corner = Theme.HUD.corner
+        static let width = Theme.HUD.width
     }
 
     private let background: SKShapeNode
