@@ -5,7 +5,7 @@ final class GameScene: SKScene, GameCoreDelegate {
     private let hudNode = SKNode()
     private var hudManager: HUDManager!
     private let gameOverOverlay = GameOverOverlay()
-    private var inputController: InputControllerProtocol!
+    private(set) var inputController: InputControllerProtocol!
     private let core = GameCore()
 
     override func didMove(to view: SKView) {

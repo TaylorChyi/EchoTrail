@@ -1,6 +1,6 @@
 import SpriteKit
 
-/// 全局主题色集合，统一视觉风格
+/// 全局主题与 UI 配置，统一视觉风格
 enum Theme {
     /// 突出色，供 HUD 与摇杆等组件共用
     static let accent = SKColor(red: 0.45, green: 0.82, blue: 0.95, alpha: 1)
@@ -16,4 +16,24 @@ enum Theme {
     static let echo = SKColor(red: 0.38, green: 0.65, blue: 0.98, alpha: 1)
     /// 金球颜色
     static let goldBall = SKColor(red: 0.98, green: 0.75, blue: 0.14, alpha: 1)
+
+    /// 字体与字号配置
+    enum Font {
+        static let primary = "Menlo-Bold"
+        static let hudSize: CGFloat = 14
+    }
+
+    /// HUD 相关尺寸配置
+    enum HUD {
+        static let lineHeight: CGFloat = 24
+        static let padding: CGFloat = 12
+        static let corner: CGFloat = 12
+        static let width: CGFloat = 160
+    }
+
+    /// 游戏结束覆盖层配置
+    enum GameOverOverlay {
+        static let padding: CGFloat = 20
+        static let corner: CGFloat = 16
+    }
 }
