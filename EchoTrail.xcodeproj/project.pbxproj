@@ -20,61 +20,53 @@
 		E1059B462E5384090024A1F7 /* Exceptions for "EchoTrail Shared" folder in "EchoTrail iOS" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-                                Actions.sks,
-                                Assets.xcassets,
-                                Audio,
-                                Config,
-                                Config/AudioConfig.swift,
-                                Config/GameConfig.swift,
-                                Core,
-                                Core/EntitySystem.swift,
-                                Core/GameCore.swift,
-                                Core/WorldBuilder.swift,
-                                Entity.swift,
-                                GameAudio.swift,
-                                GameOverOverlay.swift,
-                                GameScene.sks,
-                                GameScene.swift,
-                                HUDManager.swift,
-                                Input,
-                                Input/InputControllerProtocol.swift,
-                                Input/KeyboardInputController.swift,
-                                Input/TouchInputController.swift,
-                                IntPoint.swift,
-                                JoystickView.swift,
-                                Theme.swift,
-                        );
-                        target = E1059B222E5384090024A1F7 /* EchoTrail iOS */;
-                };
-                E1059B4A2E5384090024A1F7 /* Exceptions for "EchoTrail Shared" folder in "EchoTrail macOS" target */ = {
-                        isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-                        membershipExceptions = (
-                                Actions.sks,
-                                Assets.xcassets,
-                                Audio,
-                                Config,
-                                Config/AudioConfig.swift,
-                                Config/GameConfig.swift,
-                                Core,
-                                Core/EntitySystem.swift,
-                                Core/GameCore.swift,
-                                Core/WorldBuilder.swift,
-                                Entity.swift,
-                                GameAudio.swift,
-                                GameOverOverlay.swift,
-                                GameScene.sks,
-                                GameScene.swift,
-                                HUDManager.swift,
-                                Input,
-                                Input/InputControllerProtocol.swift,
-                                Input/KeyboardInputController.swift,
-                                Input/TouchInputController.swift,
-                                IntPoint.swift,
-                                JoystickView.swift,
-                                Theme.swift,
-                        );
-                        target = E1059B332E5384090024A1F7 /* EchoTrail macOS */;
-                };
+				Actions.sks,
+				Assets.xcassets,
+				Config/AudioConfig.swift,
+				Config/GameConfig.swift,
+				Core/EntitySystem.swift,
+				Core/GameCore.swift,
+				Core/WorldBuilder.swift,
+				Entity.swift,
+				GameAudio.swift,
+				GameOverOverlay.swift,
+				GameScene.sks,
+				GameScene.swift,
+				HUDManager.swift,
+				Input/InputControllerProtocol.swift,
+				Input/KeyboardInputController.swift,
+				Input/TouchInputController.swift,
+				IntPoint.swift,
+				JoystickView.swift,
+				Theme.swift,
+			);
+			target = E1059B222E5384090024A1F7 /* EchoTrail iOS */;
+		};
+		E1059B4A2E5384090024A1F7 /* Exceptions for "EchoTrail Shared" folder in "EchoTrail macOS" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Actions.sks,
+				Assets.xcassets,
+				Config/AudioConfig.swift,
+				Config/GameConfig.swift,
+				Core/EntitySystem.swift,
+				Core/GameCore.swift,
+				Core/WorldBuilder.swift,
+				Entity.swift,
+				GameAudio.swift,
+				GameOverOverlay.swift,
+				GameScene.sks,
+				GameScene.swift,
+				HUDManager.swift,
+				Input/InputControllerProtocol.swift,
+				Input/KeyboardInputController.swift,
+				Input/TouchInputController.swift,
+				IntPoint.swift,
+				JoystickView.swift,
+				Theme.swift,
+			);
+			target = E1059B332E5384090024A1F7 /* EchoTrail macOS */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -192,7 +184,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1630;
-				LastUpgradeCheck = 1630;
+				LastUpgradeCheck = 1640;
 				TargetAttributes = {
 					E1059B222E5384090024A1F7 = {
 						CreatedOnToolsVersion = 16.3;
@@ -326,6 +318,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMainStoryboardFile = Main;
@@ -354,6 +347,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMainStoryboardFile = Main;
@@ -407,6 +401,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -468,6 +463,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
