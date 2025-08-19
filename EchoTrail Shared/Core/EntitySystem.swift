@@ -67,12 +67,13 @@ final class PlayerEntity: TailEntity {
     var position: IntPoint
     var previousPosition: IntPoint
     var tail: [IntPoint] = []
-    let node: SKShapeNode
+    private let shapeNode: SKShapeNode
+    var node: SKNode { shapeNode }
 
     init(position: IntPoint, node: SKShapeNode) {
         self.position = position
         self.previousPosition = position
-        self.node = node
+        self.shapeNode = node
     }
 
     func update(deltaTime: TimeInterval) { }
@@ -83,7 +84,8 @@ final class EchoEntity: TailEntity {
     var position: IntPoint
     var previousPosition: IntPoint
     var tail: [IntPoint] = []
-    let node: SKShapeNode
+    private let shapeNode: SKShapeNode
+    var node: SKNode { shapeNode }
     /// Index offset into the player's history that this echo follows.
     var delayIndex: Int
 
@@ -91,7 +93,7 @@ final class EchoEntity: TailEntity {
         self.position = position
         self.previousPosition = position
         self.delayIndex = delayIndex
-        self.node = node
+        self.shapeNode = node
     }
 
     func update(deltaTime: TimeInterval) { }
@@ -100,7 +102,8 @@ final class EchoEntity: TailEntity {
 /// Static or kinetic obstacle occupying cells on the grid.
 final class ObstacleEntity: GameEntity {
     var position: IntPoint
-    let node: SKShapeNode
+    private let shapeNode: SKShapeNode
+    var node: SKNode { shapeNode }
 
     /// Path for kinetic obstacles; empty for static ones.
     var path: [IntPoint]
@@ -119,7 +122,7 @@ final class ObstacleEntity: GameEntity {
         self.position = position
         self.path = path
         self.currentIndex = 0
-        self.node = node
+        self.shapeNode = node
         self.pointFor = pointFor
         self.moveDuration = moveDuration
         self.period = max(1, period)
